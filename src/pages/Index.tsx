@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -52,20 +53,14 @@ const Index = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/functions/v1/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: input }),
+      const { data, error } = await supabase.functions.invoke('chat', {
+        body: { message: input }
       });
 
-      if (!response.ok) {
-        throw new Error('Vastuse saamisel tekkis viga');
+      if (error) {
+        throw error;
       }
 
-      const data = await response.json();
-      
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",

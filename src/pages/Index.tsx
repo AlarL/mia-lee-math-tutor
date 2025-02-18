@@ -54,11 +54,19 @@ const Index = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('chat', {
-        body: { message: input }
+        body: { message: input },
+        headers: {
+          Authorization: `Bearer ${supabase.auth.getSession()?.access_token}`,
+        },
       });
 
       if (error) {
+        console.error('Supabase function error:', error);
         throw error;
+      }
+
+      if (!data || !data.reply) {
+        throw new Error('Vastus on vigane');
       }
 
       const assistantMessage: Message = {

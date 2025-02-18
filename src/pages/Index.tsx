@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -19,7 +20,7 @@ const Index = () => {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi! I'm your math tutor. How can I help you today, Mia Lee?",
+      content: "Tere! Olen sinu matemaatika õpetaja. Kuidas saan sind täna aidata?",
       timestamp: new Date(),
     },
   ]);
@@ -50,17 +51,35 @@ const Index = () => {
     setInput("");
     setIsLoading(true);
 
-    // Simulate AI response (replace with actual API call)
-    setTimeout(() => {
-      const response: Message = {
+    try {
+      const response = await fetch('/functions/v1/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: input }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Vastuse saamisel tekkis viga');
+      }
+
+      const data = await response.json();
+      
+      const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "I understand your question. Let me help you with that math problem...",
+        content: data.reply,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, response]);
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error('Viga ChatGPT päringu tegemisel:', error);
+      toast.error("Vabandust, vestluse saatmisel tekkis viga. Palun proovi uuesti.");
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleImageUpload = () => {
@@ -73,7 +92,7 @@ const Index = () => {
       <div className="w-64 bg-white border-r border-gray-200 p-4">
         <div className="flex items-center space-x-2 mb-6">
           <MessageSquare className="w-6 h-6 text-tutor-primary" />
-          <h1 className="text-lg font-semibold text-tutor-text">Math Tutor</h1>
+          <h1 className="text-lg font-semibold text-tutor-text">Matemaatika Õpetaja</h1>
         </div>
         <nav className="space-y-2">
           <Button
@@ -81,7 +100,7 @@ const Index = () => {
             className="w-full justify-start text-gray-600 hover:text-tutor-primary hover:bg-tutor-hover"
           >
             <History className="mr-2 h-4 w-4" />
-            Chat History
+            Vestluste Ajalugu
           </Button>
         </nav>
       </div>
@@ -144,7 +163,7 @@ const Index = () => {
               <Image className="h-5 w-5" />
             </Button>
             <Input
-              placeholder="Ask your math question..."
+              placeholder="Küsi oma matemaatika küsimus..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => {

@@ -54,10 +54,7 @@ const Index = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('chat', {
-        body: { message: input },
-        headers: {
-          Authorization: `Bearer ${supabase.auth.getSession()?.access_token}`,
-        },
+        body: { message: input }
       });
 
       if (error) {

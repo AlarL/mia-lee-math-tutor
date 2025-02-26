@@ -25,6 +25,11 @@ serve(async (req) => {
       throw new Error('No message provided');
     }
 
+    if (!openAIApiKey) {
+      console.error('OpenAI API key is not set');
+      throw new Error('OpenAI API key is not configured');
+    }
+
     console.log('Sending request to OpenAI');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -54,6 +59,17 @@ serve(async (req) => {
 
     console.log('Received response from OpenAI');
     const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('OpenAI API error:', data);
+      throw new Error(data.error?.message || 'OpenAI API error');
+    }
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('Unexpected OpenAI response format:', data);
+      throw new Error('Unexpected response format from OpenAI');
+    }
+
     const assistantMessage = data.choices[0].message.content;
 
     return new Response(JSON.stringify({ reply: assistantMessage }), {

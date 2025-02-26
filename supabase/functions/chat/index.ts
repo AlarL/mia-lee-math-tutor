@@ -1,8 +1,10 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import OpenAI from "https://esm.sh/openai@4.20.1";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const ASSISTANT_ID = "asst_abc123"; // This will be replaced with the actual Assistant ID
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,64 +12,61 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Request received:', req.method);
-    
     const { message } = await req.json();
     console.log('Received message:', message);
-    
+
     if (!message) {
-      console.error('No message provided in request');
       throw new Error('No message provided');
     }
 
     if (!openAIApiKey) {
-      console.error('OpenAI API key is not set');
       throw new Error('OpenAI API key is not configured');
     }
 
-    console.log('Sending request to OpenAI');
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: 'Sa oled matemaatika õpetaja. Vasta lühidalt ja selgelt.'
-          },
-          { role: 'user', content: message }
-        ],
-        temperature: 0.7,
-        max_tokens: 150,
-      }),
+    const openai = new OpenAI({
+      apiKey: openAIApiKey
     });
 
-    console.log('OpenAI response status:', response.status);
-    const data = await response.json();
-    console.log('OpenAI response data:', data);
+    // Create a thread
+    const thread = await openai.beta.threads.create();
+    console.log('Created thread:', thread.id);
+
+    // Add the message to the thread
+    await openai.beta.threads.messages.create(thread.id, {
+      role: "user",
+      content: message
+    });
+
+    // Run the Assistant
+    const run = await openai.beta.threads.runs.create(thread.id, {
+      assistant_id: ASSISTANT_ID
+    });
+
+    // Wait for the completion
+    let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
     
-    if (!response.ok) {
-      console.error('OpenAI API error:', data);
-      throw new Error(data.error?.message || 'OpenAI API error');
+    // Poll until the run is completed
+    while (runStatus.status === 'in_progress' || runStatus.status === 'queued') {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      console.log('Run status:', runStatus.status);
     }
 
-    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('Unexpected OpenAI response format:', data);
-      throw new Error('Unexpected response format from OpenAI');
+    // Get the messages
+    const messages = await openai.beta.threads.messages.list(thread.id);
+    const lastMessage = messages.data[0];
+
+    if (!lastMessage || !lastMessage.content[0]) {
+      throw new Error('No response from assistant');
     }
 
-    const reply = data.choices[0].message.content;
-    console.log('Generated reply:', reply);
+    const reply = lastMessage.content[0].text.value;
+    console.log('Assistant reply:', reply);
 
     return new Response(JSON.stringify({ reply }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

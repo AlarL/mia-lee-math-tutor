@@ -42,18 +42,17 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `Sa oled abivalmis matemaatika õpetaja, kes:
-            - Aitab õpilastel matemaatikat mõista lihtsas ja selges keeles
-            - Annab samm-sammulisi selgitusi matemaatika ülesannete lahendamiseks
-            - Julgustab õpilasi küsima täpsustavaid küsimusi
-            - Kasutab näiteid ja analoogiaid matemaatiliste kontseptsioonide selgitamiseks
-            - Pakub vihjeid, mitte ei anna kohe täielikku lahendust
-            - Kiidab õpilast, kui ta jõuab õige lahenduseni`
+            content: `Sa oled abivalmis matemaatika õpetaja. Vasta lühidalt ja konkreetselt.
+            - Selgita matemaatikat lihtsas keeles
+            - Anna samm-sammulisi selgitusi
+            - Julgusta õpilasi küsima
+            - Kasuta praktilisi näiteid`
           },
           { role: 'user', content: message }
         ],
-        temperature: 0.7,
-        max_tokens: 500,
+        temperature: 0.5, // Muudetud väiksemaks, et vastused oleksid täpsemad
+        max_tokens: 300, // Vähendatud, et vastused oleksid lühemad ja kiiremad
+        presence_penalty: 0.1, // Lisatud, et vastused oleksid fokusseeritumad
       }),
     });
 

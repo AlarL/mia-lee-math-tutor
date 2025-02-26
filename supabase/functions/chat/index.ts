@@ -16,9 +16,10 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Received request to chat function');
+    console.log('Request received:', req.method);
     
     const { message } = await req.json();
+    console.log('Received message:', message);
     
     if (!message) {
       console.error('No message provided in request');
@@ -38,26 +39,22 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
-            content: `Sa oled abivalmis matemaatika õpetaja. Vasta lühidalt ja konkreetselt.
-            - Selgita matemaatikat lihtsas keeles
-            - Anna samm-sammulisi selgitusi
-            - Julgusta õpilasi küsima
-            - Kasuta praktilisi näiteid`
+            content: 'Sa oled matemaatika õpetaja. Vasta lühidalt ja selgelt.'
           },
           { role: 'user', content: message }
         ],
-        temperature: 0.5, // Muudetud väiksemaks, et vastused oleksid täpsemad
-        max_tokens: 300, // Vähendatud, et vastused oleksid lühemad ja kiiremad
-        presence_penalty: 0.1, // Lisatud, et vastused oleksid fokusseeritumad
+        temperature: 0.7,
+        max_tokens: 150,
       }),
     });
 
-    console.log('Received response from OpenAI');
+    console.log('OpenAI response status:', response.status);
     const data = await response.json();
+    console.log('OpenAI response data:', data);
     
     if (!response.ok) {
       console.error('OpenAI API error:', data);
@@ -69,13 +66,14 @@ serve(async (req) => {
       throw new Error('Unexpected response format from OpenAI');
     }
 
-    const assistantMessage = data.choices[0].message.content;
+    const reply = data.choices[0].message.content;
+    console.log('Generated reply:', reply);
 
-    return new Response(JSON.stringify({ reply: assistantMessage }), {
+    return new Response(JSON.stringify({ reply }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Viga ChatGPT funktsioonis:', error);
+    console.error('Error in chat function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

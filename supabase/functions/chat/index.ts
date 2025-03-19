@@ -27,36 +27,41 @@ serve(async (req) => {
       throw new Error('OpenAI API key is not configured');
     }
 
-    const openai = new OpenAI({
-      apiKey: openAIApiKey
-    });
+    // Lihtsustame OpenAI API kutset veelgi
+    try {
+      const openai = new OpenAI({
+        apiKey: openAIApiKey
+      });
 
-    // Kasutame otse ChatCompletion API asemel
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'Sa oled matemaatika õpetaja. Vasta lühidalt ja selgelt eesti keeles. Sinu eesmärk on aidata õpilasi matemaatika ülesannetega.'
-        },
-        { role: 'user', content: message }
-      ],
-      temperature: 0.7,
-      max_tokens: 500,
-    });
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini', // Kasutame väiksemat mudelit kiirema vastuse jaoks
+        messages: [
+          {
+            role: 'system',
+            content: 'Sa oled matemaatika õpetaja. Vasta lühidalt ja selgelt eesti keeles. Sinu eesmärk on aidata õpilasi matemaatika ülesannetega.'
+          },
+          { role: 'user', content: message }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+      });
 
-    console.log('OpenAI response:', response);
+      console.log('OpenAI response status:', 'success');
 
-    if (!response.choices || !response.choices[0] || !response.choices[0].message) {
-      throw new Error('Unexpected response format from OpenAI');
+      if (!response.choices || !response.choices[0] || !response.choices[0].message) {
+        throw new Error('Unexpected response format from OpenAI');
+      }
+
+      const reply = response.choices[0].message.content;
+      console.log('Generated reply:', reply.substring(0, 50) + '...');
+
+      return new Response(JSON.stringify({ reply }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    } catch (openaiError) {
+      console.error('OpenAI API error:', openaiError);
+      throw new Error(`OpenAI API viga: ${openaiError.message}`);
     }
-
-    const reply = response.choices[0].message.content;
-    console.log('Generated reply:', reply);
-
-    return new Response(JSON.stringify({ reply }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   } catch (error) {
     console.error('Error in chat function:', error);
     return new Response(JSON.stringify({ error: error.message }), {

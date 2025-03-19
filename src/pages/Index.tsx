@@ -53,17 +53,21 @@ const Index = () => {
     setIsLoading(true);
 
     try {
+      console.log('Sending request to chat function with message:', input);
+      
       const { data, error } = await supabase.functions.invoke('chat', {
         body: { message: input }
       });
 
+      console.log('Response received:', { data, error });
+      
       if (error) {
         console.error('Supabase function error:', error);
-        throw error;
+        throw new Error(`Supabase funktsioon andis vea: ${error.message}`);
       }
 
       if (!data || !data.reply) {
-        throw new Error('Vastus on vigane');
+        throw new Error('Vastus on vigane või puudub');
       }
 
       const assistantMessage: Message = {
@@ -76,6 +80,16 @@ const Index = () => {
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Viga ChatGPT päringu tegemisel:', error);
+      
+      // Lisa veateate kuvamine vestlusesse
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `Vabandust, vestluse saatmisel tekkis viga: ${error.message || "Tundmatu viga"}. Palun proovi uuesti.`,
+        timestamp: new Date(),
+      };
+      
+      setMessages((prev) => [...prev, errorMessage]);
       toast.error("Vabandust, vestluse saatmisel tekkis viga. Palun proovi uuesti.");
     } finally {
       setIsLoading(false);

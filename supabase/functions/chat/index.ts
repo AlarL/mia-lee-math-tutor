@@ -4,7 +4,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.20.1";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const ASSISTANT_ID = "asst_abc123"; // This will be replaced with the actual Assistant ID
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,41 +31,28 @@ serve(async (req) => {
       apiKey: openAIApiKey
     });
 
-    // Create a thread
-    const thread = await openai.beta.threads.create();
-    console.log('Created thread:', thread.id);
-
-    // Add the message to the thread
-    await openai.beta.threads.messages.create(thread.id, {
-      role: "user",
-      content: message
+    // Kasutame otse ChatCompletion API asemel
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'Sa oled matemaatika õpetaja. Vasta lühidalt ja selgelt eesti keeles. Sinu eesmärk on aidata õpilasi matemaatika ülesannetega.'
+        },
+        { role: 'user', content: message }
+      ],
+      temperature: 0.7,
+      max_tokens: 500,
     });
 
-    // Run the Assistant
-    const run = await openai.beta.threads.runs.create(thread.id, {
-      assistant_id: ASSISTANT_ID
-    });
+    console.log('OpenAI response:', response);
 
-    // Wait for the completion
-    let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-    
-    // Poll until the run is completed
-    while (runStatus.status === 'in_progress' || runStatus.status === 'queued') {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-      console.log('Run status:', runStatus.status);
+    if (!response.choices || !response.choices[0] || !response.choices[0].message) {
+      throw new Error('Unexpected response format from OpenAI');
     }
 
-    // Get the messages
-    const messages = await openai.beta.threads.messages.list(thread.id);
-    const lastMessage = messages.data[0];
-
-    if (!lastMessage || !lastMessage.content[0]) {
-      throw new Error('No response from assistant');
-    }
-
-    const reply = lastMessage.content[0].text.value;
-    console.log('Assistant reply:', reply);
+    const reply = response.choices[0].message.content;
+    console.log('Generated reply:', reply);
 
     return new Response(JSON.stringify({ reply }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

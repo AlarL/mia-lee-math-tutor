@@ -27,43 +27,55 @@ serve(async (req) => {
       throw new Error('OpenAI API key is not configured');
     }
 
-    // Lihtsustame OpenAI API kutset veelgi
+    console.log('Starting OpenAI API call with key length:', openAIApiKey.length);
+    console.log('Key prefix:', openAIApiKey.substring(0, 5) + '...');
+
     try {
       const openai = new OpenAI({
         apiKey: openAIApiKey
       });
 
+      // Kasutame lihtsustatud API kutset ilma lisaparameetriteta
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini', // Kasutame väiksemat mudelit kiirema vastuse jaoks
+        model: 'gpt-3.5-turbo', // Kasutame kõige stabiilsemat ja usaldusväärsemat mudelit
         messages: [
-          {
-            role: 'system',
-            content: 'Sa oled matemaatika õpetaja. Vasta lühidalt ja selgelt eesti keeles. Sinu eesmärk on aidata õpilasi matemaatika ülesannetega.'
-          },
           { role: 'user', content: message }
         ],
-        temperature: 0.7,
-        max_tokens: 500,
       });
 
-      console.log('OpenAI response status:', 'success');
+      console.log('OpenAI API call completed successfully');
 
-      if (!response.choices || !response.choices[0] || !response.choices[0].message) {
-        throw new Error('Unexpected response format from OpenAI');
+      if (!response.choices || !response.choices.length) {
+        throw new Error('No choices in OpenAI response');
       }
 
       const reply = response.choices[0].message.content;
-      console.log('Generated reply:', reply.substring(0, 50) + '...');
+      console.log('Reply generated:', reply.substring(0, 30) + '...');
 
       return new Response(JSON.stringify({ reply }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } catch (openaiError) {
-      console.error('OpenAI API error:', openaiError);
-      throw new Error(`OpenAI API viga: ${openaiError.message}`);
+      console.error('OpenAI API error details:', openaiError);
+      console.error('OpenAI API error name:', openaiError.name);
+      console.error('OpenAI API error message:', openaiError.message);
+      
+      if (openaiError.response) {
+        console.error('OpenAI API error status:', openaiError.response.status);
+        console.error('OpenAI API error data:', openaiError.response.data);
+      }
+      
+      throw new Error(`OpenAI API error: ${openaiError.message}`);
     }
   } catch (error) {
-    console.error('Error in chat function:', error);
+    console.error('General error in chat function:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    
+    if (error.stack) {
+      console.error('Error stack:', error.stack);
+    }
+    
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { MessageSquare, Image, History, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface Message {
   id: string;
@@ -27,6 +27,7 @@ const Index = () => {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +52,7 @@ const Index = () => {
     setMessages((prev) => [...prev, newMessage]);
     setInput("");
     setIsLoading(true);
+    setError(null);
 
     try {
       console.log('Sending request to chat function with message:', input);
@@ -66,8 +68,16 @@ const Index = () => {
         throw new Error(`Supabase funktsioon andis vea: ${error.message}`);
       }
 
-      if (!data || !data.reply) {
-        throw new Error('Vastus on vigane või puudub');
+      if (!data) {
+        throw new Error('Vastus puudub');
+      }
+
+      if (!data.reply && !data.error) {
+        throw new Error('Vastus on vigane või puudub sisu');
+      }
+
+      if (data.error) {
+        throw new Error(data.error);
       }
 
       const assistantMessage: Message = {
@@ -80,6 +90,7 @@ const Index = () => {
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Viga ChatGPT päringu tegemisel:', error);
+      setError(error.message || "Tundmatu viga");
       
       // Lisa veateate kuvamine vestlusesse
       const errorMessage: Message = {
@@ -123,6 +134,12 @@ const Index = () => {
       <div className="flex-1 flex flex-col bg-gray-50">
         {/* Chat Messages */}
         <ScrollArea className="flex-1 p-4">
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Viga!</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <div className="space-y-4">
             {messages.map((message) => (
               <div
@@ -198,3 +215,4 @@ const Index = () => {
 };
 
 export default Index;
+
